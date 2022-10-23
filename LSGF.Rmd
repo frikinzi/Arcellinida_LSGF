@@ -1,0 +1,194 @@
+---
+title: "LSGF_markdown"
+author: "Angela Jiang"
+date: '2022-10-20'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plotly)
+```
+
+## R Markdown
+
+```{r read_file}
+table = read.table(file = 'Orthogroups.GeneCount-new_taxa-10-23.tsv', sep = '\t', header = TRUE)
+
+taxon = read.table(file = 'taxon.csv', sep = ',', header = TRUE)
+```
+
+
+```{r table, echo=FALSE}
+helperFunction1 <- function(x){
+  ifelse(x>=1, 1,0)
+}
+
+reduced_table <- table %>%
+  filter(Total > 5)
+
+reduced_table_with_row_name <- reduced_table[,-1]
+rownames(reduced_table_with_row_name) <- reduced_table[,1]
+
+newtable <- reduced_table %>%
+  filter(Total > 5) %>%
+  mutate(across(!Orthogroup, helperFunction1)) %>%
+  select(!228) 
+
+newtablenew <- newtable[,-1]
+rownames(newtablenew) <- newtable[,1]
+
+colnames(newtablenew) <- taxon$Group
+
+OGs <- newtable %>%
+  select(contains("Orthogroup"))
+
+# sums columns with the same name and merges them
+by_group <- as.data.frame(sapply(unique(names(newtablenew)), function(i)rowSums(newtablenew[names(newtablenew) == i])))
+```
+
+## Arcellinida-Specific genes
+
+```{r arcellinida_specific}
+arcellinidaonly <- by_group %>%
+  filter(Group_1 > 1 & Group_2 > 2 & Group_3 > 2 & Group_4 > 1 & Group_5 > 0 & Group_6 > 0 & Group_8 > 3 & Group_7/(Group_1+Group_2+Group_3+Group_4+Group_5+Group_6+Group_8+Group_7) < 0.05)
+
+#saving to table 
+arcellinida_OGs <- merge(reduced_table_with_row_name, arcellinidaonly,
+                          by = 'row.names', all = FALSE)[1:227]
+
+names(arcellinida_OGs)[names(arcellinida_OGs) == 'Row.names'] <- 'Orthogroup'
+
+write.table(arcellinida_OGs, sep="\t", file="Tables/LSGarcellinida.tsv", row.names = FALSE)
+
+#calculate number of LSG
+number <- nrow(arcellinidaonly)
+
+```
+
+Criteria: at least 2 from Sphaerothecina, 3 H. elegans, 3 Nebela, 2 Difflugina, 1 Heleopera, 1 from misc Arcellinida groups, and less than 5% non Arcellinida
+
+There are `r number` all-Arcellinida lineage-specific genes.
+
+## H. papilio-Specific gene families
+
+```{r pap_specific}
+hpapilio_only <- by_group %>%
+  filter(Group_8 > 20 & ((Group_8/(Group_1+Group_2+Group_3+Group_4+Group_5+Group_6+Group_7+Group_8)) > 0.95))
+
+#saving to table 
+hpapilio_OGs <- merge(reduced_table_with_row_name, hpapilio_only,
+                          by = 'row.names', all = FALSE)[1:227]
+
+#rename column name
+names(hpapilio_OGs)[names(hpapilio_OGs) == 'Row.names'] <- 'Orthogroup'
+
+write.table(hpapilio_OGs, sep="\t", file="Tables/LSGpapilio.tsv", row.names = FALSE)
+
+#calculate number of LSG
+number_pap <- nrow(hpapilio_only)
+
+```
+
+Criteria: at least 20 H. papilio cells, 5% of other cells can be non-H. papilio
+
+There are `r number_pap` H. papilio-only lineage-specific genes.
+
+## H. elegans-Specific gene families
+
+```{r elegans_specific}
+helegans_only <- by_group %>%
+  filter(Group_2 > 10 & ((Group_2/(Group_1+Group_2+Group_3+Group_4+Group_5+Group_6+Group_7+Group_8)) > 0.95))
+
+#saving to table 
+elegans_OGs <- merge(reduced_table_with_row_name, helegans_only,
+                          by = 'row.names', all = FALSE)[1:227]
+
+#rename column name
+names(elegans_OGs)[names(elegans_OGs) == 'Row.names'] <- 'Orthogroup'
+
+write.table(elegans_OGs, sep="\t", file="Tables/LSGelegans.tsv", row.names = FALSE)
+
+#calculate number of LSG
+number_elegans <- nrow(helegans_only)
+
+```
+
+Criteria: at least 10 H. elegans cells, 5% of other cells can be non-H. elegans
+
+There are `r number_elegans` H. elegans-only lineage-specific genes.
+
+## Heatmaps!
+
+### All Arcellinida Heatmap
+```{r heatmap_arc}
+newtable_heat <- newtable[,-1]
+rownames(newtable_heat) <- newtable[,1]
+
+#saving to binary table 
+arcellinida_heat <- merge(newtable_heat, arcellinidaonly,
+                          by = 'row.names', all = FALSE)[1:227]
+
+#rename column name
+names(arcellinida_heat)[names(arcellinida_heat) == 'Row.names'] <- 'Orthogroup'
+arcellinida_heat_x <- arcellinida_heat[,-1]
+rownames(arcellinida_heat_x) <- arcellinida_heat[,1]
+
+data <- as.matrix(arcellinida_heat_x)
+fig <- plot_ly(z = data, y=rownames(arcellinida_heat_x), x=colnames(arcellinida_heat_x), colors = colorRamp(c("white", "red")), type = "heatmap") %>%
+  layout( plot_bgcolor='#e5ecf6',
+          yaxis = list(
+            showticklabels = FALSE,
+            gridcolor = 'ffff'))#generate an interactive heat map
+fig #view
+
+```
+
+### H. papilio LSG Heatmap
+```{r heatmap_pap}
+newtable_heat <- newtable[,-1]
+rownames(newtable_heat) <- newtable[,1]
+
+#saving to binary table 
+papilio_heat <- merge(newtable_heat, hpapilio_only,
+                          by = 'row.names', all = FALSE)[1:227]
+
+#rename column name
+names(papilio_heat)[names(papilio_heat) == 'Row.names'] <- 'Orthogroup'
+papilio_heat_x <- papilio_heat[,-1]
+rownames(papilio_heat_x) <- papilio_heat[,1]
+
+data <- as.matrix(papilio_heat_x)
+fig <- plot_ly(z = data, y=rownames(papilio_heat_x), x=colnames(papilio_heat_x), colors = colorRamp(c("white", "red")), type = "heatmap") %>%
+  layout( plot_bgcolor='#e5ecf6',
+          yaxis = list(
+            showticklabels = FALSE,
+            gridcolor = 'ffff'))#generate an interactive heat map
+fig #view
+
+```
+
+### H. elegans LSG Heatmap
+```{r heatmap_elegans}
+newtable_heat <- newtable[,-1]
+rownames(newtable_heat) <- newtable[,1]
+
+#saving to binary table 
+elegans_heat <- merge(newtable_heat, helegans_only,
+                          by = 'row.names', all = FALSE)[1:227]
+
+#rename column name
+names(elegans_heat)[names(elegans_heat) == 'Row.names'] <- 'Orthogroup'
+elegans_heat_x <- elegans_heat[,-1]
+rownames(elegans_heat_x) <- elegans_heat[,1]
+
+data <- as.matrix(elegans_heat_x)
+fig <- plot_ly(z = data, y=rownames(elegans_heat_x), x=colnames(elegans_heat_x), colors = colorRamp(c("white", "red")), type = "heatmap") %>%
+  layout( plot_bgcolor='#e5ecf6',
+          yaxis = list(
+            showticklabels = FALSE,
+            gridcolor = 'ffff'))#generate an interactive heat map
+fig #view
+
+```

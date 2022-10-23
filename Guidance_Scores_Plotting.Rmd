@@ -1,0 +1,79 @@
+---
+title: "LSGF_analysis"
+author: "Angela Jiang"
+date: '2022-09-20'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+library(ggpubr)
+```
+
+## Guidance Score Plots
+
+
+
+```{r read_files}
+OG0000037 <- read.table("alignment_scores/OG0000037.tsv", sep = '\t', header = TRUE)
+OG0000177 <- read.table("alignment_scores/OG0000177.tsv", sep = '\t', header = TRUE)
+OG0000670 <- read.table("alignment_scores/OG0000670.tsv", sep = '\t', header = TRUE)
+OG0000760 <- read.table("alignment_scores/OG0000760.tsv", sep = '\t', header = TRUE)
+OG0001109 <- read.table("alignment_scores/OG0001109.tsv", sep = '\t', header = TRUE)
+OG0001756 <- read.table("alignment_scores/OG0001756.tsv", sep = '\t', header = TRUE)
+OG0001771 <- read.table("alignment_scores/OG0001771.tsv", sep = '\t', header = TRUE)
+OG0001802 <- read.table("alignment_scores/OG0001802.tsv", sep = '\t', header = TRUE)
+OG0002325 <- read.table("alignment_scores/OG0002325.tsv", sep = '\t', header = TRUE)
+OG0002740 <- read.table("alignment_scores/OG0002740.tsv", sep = '\t', header = TRUE)
+
+OG0000037_scores <-ggplot(OG0000037, aes(x=SEQUENCE_SCORE)) + 
+  geom_histogram(color="black", fill="white") +
+  ggtitle("OG0000037_scores")
+
+OG0000177_scores <-ggplot(OG0000177, aes(x=SEQUENCE_SCORE)) + 
+  geom_histogram(color="black", fill="white") +
+  ggtitle("OG0000177_scores")
+
+OG0000670_scores <-ggplot(OG0000670, aes(x=SEQUENCE_SCORE)) + 
+  geom_histogram(color="black", fill="white") +
+  ggtitle("OG0000670_scores")
+
+OG0000760_scores <-ggplot(OG0000760, aes(x=SEQUENCE_SCORE)) + 
+  geom_histogram(color="black", fill="white") +
+  ggtitle("OG0000760_scores")
+
+OG0001109_scores <-ggplot(OG0001109, aes(x=SEQUENCE_SCORE)) + 
+  geom_histogram(color="black", fill="white") +
+  ggtitle("OG0001109_scores")
+
+OG0001756_scores <-ggplot(OG0001756, aes(x=SEQUENCE_SCORE)) + 
+  geom_histogram(color="black", fill="white") +
+  ggtitle("OG0001756_scores")
+
+OG0001771_scores <-ggplot(OG0001771, aes(x=SEQUENCE_SCORE)) + 
+  geom_histogram(color="black", fill="white") +
+  ggtitle("OG0001771_scores")
+
+OG0001802_scores <-ggplot(OG0001802, aes(x=SEQUENCE_SCORE)) + 
+  geom_histogram(color="black", fill="white") +
+  ggtitle("OG0001802_scores")
+
+OG0002325_scores <-ggplot(OG0002325, aes(x=SEQUENCE_SCORE)) + 
+  geom_histogram(color="black", fill="white") +
+  ggtitle("OG0002325_scores")
+
+ggarrange(OG0000037_scores, OG0000177_scores, OG0000670_scores, OG0000760_scores, OG0001109_scores, OG0001756_scores, OG0001771_scores, OG0001802_scores, OG0002325_scores)
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
