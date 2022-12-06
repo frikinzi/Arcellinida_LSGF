@@ -14,7 +14,7 @@ library(plotly)
 ## R Markdown
 
 ```{r read_file}
-table = read.table(file = 'Orthogroups.GeneCount-new_taxa-10-23.tsv', sep = '\t', header = TRUE)
+table = read.table(file = 'Orthogroups.GeneCount_TIdeS_12-2.tsv', sep = '\t', header = TRUE)
 
 taxon = read.table(file = 'taxon.csv', sep = ',', header = TRUE)
 ```
@@ -34,7 +34,7 @@ rownames(reduced_table_with_row_name) <- reduced_table[,1]
 newtable <- reduced_table %>%
   filter(Total > 5) %>%
   mutate(across(!Orthogroup, helperFunction1)) %>%
-  select(!228) 
+  select(!225)
 
 newtablenew <- newtable[,-1]
 rownames(newtablenew) <- newtable[,1]
@@ -52,11 +52,11 @@ by_group <- as.data.frame(sapply(unique(names(newtablenew)), function(i)rowSums(
 
 ```{r arcellinida_specific}
 arcellinidaonly <- by_group %>%
-  filter(Group_1 > 1 & Group_2 > 2 & Group_3 > 2 & Group_4 > 1 & Group_5 > 0 & Group_6 > 0 & Group_8 > 3 & Group_7/(Group_1+Group_2+Group_3+Group_4+Group_5+Group_6+Group_8+Group_7) < 0.05)
+  filter(Group_1 > 1 & Group_2 > 2 & Group_3 > 2 & Group_4 > 1 & Group_6 > 0 & Group_8 > 3 & Group_7/(Group_1+Group_2+Group_3+Group_4+Group_5+Group_6+Group_8+Group_7) < 0.05)
 
 #saving to table 
 arcellinida_OGs <- merge(reduced_table_with_row_name, arcellinidaonly,
-                          by = 'row.names', all = FALSE)[1:227]
+                          by = 'row.names', all = FALSE)[1:225]
 
 names(arcellinida_OGs)[names(arcellinida_OGs) == 'Row.names'] <- 'Orthogroup'
 
@@ -79,7 +79,7 @@ hpapilio_only <- by_group %>%
 
 #saving to table 
 hpapilio_OGs <- merge(reduced_table_with_row_name, hpapilio_only,
-                          by = 'row.names', all = FALSE)[1:227]
+                          by = 'row.names', all = FALSE)[1:225]
 
 #rename column name
 names(hpapilio_OGs)[names(hpapilio_OGs) == 'Row.names'] <- 'Orthogroup'
@@ -99,11 +99,11 @@ There are `r number_pap` H. papilio-only lineage-specific genes.
 
 ```{r elegans_specific}
 helegans_only <- by_group %>%
-  filter(Group_2 > 10 & ((Group_2/(Group_1+Group_2+Group_3+Group_4+Group_5+Group_6+Group_7+Group_8)) > 0.95))
+  filter(Group_2 > 7 & ((Group_2/(Group_1+Group_2+Group_3+Group_4+Group_5+Group_6+Group_7+Group_8)) > 0.95))
 
 #saving to table 
 elegans_OGs <- merge(reduced_table_with_row_name, helegans_only,
-                          by = 'row.names', all = FALSE)[1:227]
+                          by = 'row.names', all = FALSE)[1:225]
 
 #rename column name
 names(elegans_OGs)[names(elegans_OGs) == 'Row.names'] <- 'Orthogroup'
@@ -115,7 +115,7 @@ number_elegans <- nrow(helegans_only)
 
 ```
 
-Criteria: at least 10 H. elegans cells, 5% of other cells can be non-H. elegans
+Criteria: at least 7 H. elegans cells, 5% of other cells can be non-H. elegans
 
 There are `r number_elegans` H. elegans-only lineage-specific genes.
 
@@ -128,7 +128,7 @@ rownames(newtable_heat) <- newtable[,1]
 
 #saving to binary table 
 arcellinida_heat <- merge(newtable_heat, arcellinidaonly,
-                          by = 'row.names', all = FALSE)[1:227]
+                          by = 'row.names', all = FALSE)[1:224]
 
 #rename column name
 names(arcellinida_heat)[names(arcellinida_heat) == 'Row.names'] <- 'Orthogroup'
@@ -152,7 +152,7 @@ rownames(newtable_heat) <- newtable[,1]
 
 #saving to binary table 
 papilio_heat <- merge(newtable_heat, hpapilio_only,
-                          by = 'row.names', all = FALSE)[1:227]
+                          by = 'row.names', all = FALSE)[1:225]
 
 #rename column name
 names(papilio_heat)[names(papilio_heat) == 'Row.names'] <- 'Orthogroup'
@@ -176,7 +176,7 @@ rownames(newtable_heat) <- newtable[,1]
 
 #saving to binary table 
 elegans_heat <- merge(newtable_heat, helegans_only,
-                          by = 'row.names', all = FALSE)[1:227]
+                          by = 'row.names', all = FALSE)[1:225]
 
 #rename column name
 names(elegans_heat)[names(elegans_heat) == 'Row.names'] <- 'Orthogroup'
