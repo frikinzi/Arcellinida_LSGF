@@ -1,7 +1,7 @@
 ---
 title: "LSGF_markdown"
 author: "Angela Jiang"
-date: '2022-10-20'
+date: '2023-4-11'
 output: html_document
 ---
 
@@ -9,32 +9,39 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(plotly)
+library(processx)
+library(ggplot2)
 ```
 
-## R Markdown
+Given an OrthoFinder gene count table, finds Arcellinida, H. elegans and H. papilio LSGFs
+
+## Reads the Tables
 
 ```{r read_file}
-table = read.table(file = 'Orthogroups.GeneCount_TIdeS_12-2.tsv', sep = '\t', header = TRUE)
+table = read.table(file = 'curated_genecount_elegans.csv', sep = ',', header = TRUE)
 
-taxon = read.table(file = 'taxon.csv', sep = ',', header = TRUE)
+taxon = read.table(file = 'taxon-tides.csv', sep = ',', header = TRUE)
 ```
 
+## Sets Up the Dataframes
 
 ```{r table, echo=FALSE}
 helperFunction1 <- function(x){
   ifelse(x>=1, 1,0)
 }
 
-reduced_table <- table %>%
-  filter(Total > 5)
+reduced_table <- table
+ #filter(Total > 5)
 
 reduced_table_with_row_name <- reduced_table[,-1]
 rownames(reduced_table_with_row_name) <- reduced_table[,1]
 
 newtable <- reduced_table %>%
-  filter(Total > 5) %>%
+  #filter(Total > 5) %>%
+  subset(select = -c(Am_tu_He44) ) %>% #longest: Am_tu_He44.FinalORFs.AA
+  #subset(select = -c(Am_tu_Hp19.FinalORFs.AA) ) %>%
   mutate(across(!Orthogroup, helperFunction1)) %>%
-  select(!225)
+  select(!223) #224 for tides, 228 longest, 223 for curated data
 
 newtablenew <- newtable[,-1]
 rownames(newtablenew) <- newtable[,1]
@@ -52,7 +59,11 @@ by_group <- as.data.frame(sapply(unique(names(newtablenew)), function(i)rowSums(
 
 ```{r arcellinida_specific}
 arcellinidaonly <- by_group %>%
-  filter(Group_1 > 1 & Group_2 > 2 & Group_3 > 2 & Group_4 > 1 & Group_6 > 0 & Group_8 > 3 & Group_7/(Group_1+Group_2+Group_3+Group_4+Group_5+Group_6+Group_8+Group_7) < 0.05)
+  filter(Sphaerothecina > 1 & H_elegans > 2 & Nebela > 2 & Centropyxis_Difflugia_Lesquereusia > 1 & Misc_Arcellinida > 0 & H_papilio > 3 & Non_Arcellinida/(Sphaerothecina+H_elegans+Nebela+Centropyxis_Difflugia_Lesquereusia+Heleopera+Misc_Arcellinida+H_papilio+Non_Arcellinida) < 0.05)
+# ^ with taxon picky criteria
+
+#arcellinidaonly <- by_group %>%
+#  filter((Sphaerothecina + H_elegans + Nebela + Centropyxis_Difflugia_Lesquereusia + Misc_Arcellinida + H_papilio >= 12) & Non_Arcellinida/(Sphaerothecina+H_elegans+Nebela+Centropyxis_Difflugia_Lesquereusia+Heleopera+Misc_Arcellinida+H_papilio+Non_Arcellinida) < 0.05)
 
 #saving to table 
 arcellinida_OGs <- merge(reduced_table_with_row_name, arcellinidaonly,
@@ -75,7 +86,7 @@ There are `r number` all-Arcellinida lineage-specific genes.
 
 ```{r pap_specific}
 hpapilio_only <- by_group %>%
-  filter(Group_8 > 20 & ((Group_8/(Group_1+Group_2+Group_3+Group_4+Group_5+Group_6+Group_7+Group_8)) > 0.95))
+  filter(H_papilio > 20 & ((H_papilio/(Sphaerothecina+H_elegans+Nebela+Centropyxis_Difflugia_Lesquereusia+Heleopera+Misc_Arcellinida+Non_Arcellinida+H_papilio)) > 0.95))
 
 #saving to table 
 hpapilio_OGs <- merge(reduced_table_with_row_name, hpapilio_only,
@@ -95,11 +106,85 @@ Criteria: at least 20 H. papilio cells, 5% of other cells can be non-H. papilio
 
 There are `r number_pap` H. papilio-only lineage-specific genes.
 
+## Hyalospheniidae-Specific gene families
+
+```{r hyalospheniidae}
+hyalospheniidae_only <- by_group %>%
+  filter(H_papilio > 3 & H_elegans > 3 & (((H_papilio + H_elegans)/(Sphaerothecina+H_elegans+Nebela+Centropyxis_Difflugia_Lesquereusia+Heleopera+Misc_Arcellinida+Non_Arcellinida+H_papilio)) > 0.95))
+
+#saving to table 
+hyalospheniidae_OGs <- merge(reduced_table_with_row_name, hyalospheniidae_only,
+                          by = 'row.names', all = FALSE)[1:225]
+
+#rename column name
+names(hyalospheniidae_OGs)[names(hyalospheniidae_OGs) == 'Row.names'] <- 'Orthogroup'
+
+write.table(hyalospheniidae_OGs, sep="\t", file="Tables/LSGhyalospheniidae.tsv", row.names = FALSE)
+
+#calculate number of LSG
+number_hyalospheniidae <- nrow(hyalospheniidae_only)
+
+```
+
+Criteria: at least 3 H. papilio cells, 3 H. elegans, 3 Nebela, 1 quadruella, 5% of other cells can be non-Hyalospheniidae
+
+There are `r number_hyalospheniidae` Hyalospheniidae-only lineage-specific genes.
+
+## Sphaerothecina-Specific gene families
+
+```{r Sphaerothecina}
+Sphaerothecina_only <- by_group %>%
+  filter(Sphaerothecina > 5 & (((Sphaerothecina)/(Sphaerothecina+H_elegans+Nebela+Centropyxis_Difflugia_Lesquereusia+Heleopera+Misc_Arcellinida+Non_Arcellinida+H_papilio)) > 0.95))
+
+#saving to table 
+Sphaerothecina_OGs <- merge(reduced_table_with_row_name, Sphaerothecina_only,
+                          by = 'row.names', all = FALSE)[1:225]
+
+#rename column name
+names(Sphaerothecina_OGs)[names(Sphaerothecina_OGs) == 'Row.names'] <- 'Orthogroup'
+
+write.table(Sphaerothecina_OGs, sep="\t", file="Tables/LSG_Sphaerothecina.tsv", row.names = FALSE)
+
+#calculate number of LSG
+number_Sphaerothecina <- nrow(Sphaerothecina_only)
+
+```
+
+Criteria: at least 5 Sphaerothecina, 5% of other cells can be non-Sphaerothecina
+
+There are `r number_Sphaerothecina` Sphaerothecina-only lineage-specific genes.
+
+## Longithecina-Specific gene families
+
+```{r Longithecina}
+Longithecina_only <- by_group %>%
+  filter((Sphaerothecina > 2 & Centropyxis_Difflugia_Lesquereusia > 2) & (((Sphaerothecina)/(Sphaerothecina+H_elegans+Nebela+Centropyxis_Difflugia_Lesquereusia+Heleopera+Misc_Arcellinida+Non_Arcellinida+H_papilio)) > 0.95))
+
+#saving to table 
+Longithecina_OGs <- merge(reduced_table_with_row_name, Longithecina_only,
+                          by = 'row.names', all = FALSE)[1:225]
+
+#rename column name
+names(Longithecina_OGs)[names(Longithecina_OGs) == 'Row.names'] <- 'Orthogroup'
+
+write.table(Longithecina_OGs, sep="\t", file="Tables/LSG_Longithecina.tsv", row.names = FALSE)
+
+#calculate number of LSG
+number_Longithecina <- nrow(Longithecina_only)
+
+```
+
+Criteria: at least 5 Longithecina, 5% of other cells can be non-Longithecina
+
+There are `r number_Longithecina` Longithecina-only lineage-specific genes.
+
+Note: None found that weren't found in Sphaerothecina-specific genes already
+
 ## H. elegans-Specific gene families
 
 ```{r elegans_specific}
 helegans_only <- by_group %>%
-  filter(Group_2 > 7 & ((Group_2/(Group_1+Group_2+Group_3+Group_4+Group_5+Group_6+Group_7+Group_8)) > 0.95))
+  filter(H_elegans > 7 & ((H_elegans/(Sphaerothecina+H_elegans+Nebela+Centropyxis_Difflugia_Lesquereusia+Heleopera+Misc_Arcellinida+Non_Arcellinida+H_papilio)) > 0.95))
 
 #saving to table 
 elegans_OGs <- merge(reduced_table_with_row_name, helegans_only,
@@ -122,7 +207,10 @@ There are `r number_elegans` H. elegans-only lineage-specific genes.
 ## Heatmaps!
 
 ### All Arcellinida Heatmap
-```{r heatmap_arc}
+```{r heatmap_arc, fig.width = 10, fig.height = 15}
+library(reshape2)
+library(pheatmap)
+library(RColorBrewer)
 newtable_heat <- newtable[,-1]
 rownames(newtable_heat) <- newtable[,1]
 
@@ -135,18 +223,96 @@ names(arcellinida_heat)[names(arcellinida_heat) == 'Row.names'] <- 'Orthogroup'
 arcellinida_heat_x <- arcellinida_heat[,-1]
 rownames(arcellinida_heat_x) <- arcellinida_heat[,1]
 
+arcellinida_heat_x <- arcellinida_heat_x %>%
+  select(contains("Am_tu_"))
+
 data <- as.matrix(arcellinida_heat_x)
-fig <- plot_ly(z = data, y=rownames(arcellinida_heat_x), x=colnames(arcellinida_heat_x), colors = colorRamp(c("white", "red")), type = "heatmap") %>%
-  layout( plot_bgcolor='#e5ecf6',
-          yaxis = list(
-            showticklabels = FALSE,
-            gridcolor = 'ffff'))#generate an interactive heat map
-fig #view
+datasorted<-data[, order(colSums(-data))]
+
+datasorted <- datasorted[order(rowSums(datasorted),decreasing=F),]
+
+
+ggplotthing <- melt(data, na.rm = FALSE, value.name = "name", id = "columns")
+
+p <- ggplot(ggplotthing, aes(Var1, Var2, fill= name)) + 
+  geom_tile()
+#try pheatmap()
+
+
+taxonnew <- taxon
+rownames(taxonnew) <- taxonnew[,1]
+taxonnew <- taxonnew[c(2)]
+
+row.names(taxonnew) <- str_trunc(row.names(taxonnew), 13, "right") 
+
+colnames(datasorted) <- str_trunc(colnames(datasorted), 13, "right") 
+clustered <- pheatmap(datasorted, color=colorRampPalette(c("white", "black"))(50), annotation_col = taxonnew, show_rownames = F, show_colnames = F)
+
+#fig <- plot_ly(z = data, y=rownames(arcellinida_heat_x), #x=colnames(arcellinida_heat_x), colors = colorRamp(c("white", "red")), #type = "heatmap") %>%
+#  layout( plot_bgcolor='#e5ecf6',
+#          yaxis = list(
+#            showticklabels = FALSE,
+#            gridcolor = 'ffff'),
+#          xaxis = list(
+#            showticklabels = FALSE,
+#            gridcolor = 'ffff')
+#          )#generate an interactive heat map
+#fig #view
+
+```
+
+### Dendrogram
+```{r, fig.width = 30, fig.height = 30}
+library(WGCNA)
+library(ggdendro)
+library(dendextend)
+# Compute Euclidean distance between samples
+dist=dist(t(datasorted), diag=TRUE)
+
+# Perfor clustering with hclust
+hc <- hclust(dist)
+
+dhc <- as.dendrogram(hc)
+
+colors_to_use <- taxonnew$Color
+colors_to_use <- colors_to_use[order.dendrogram(dhc)]
+
+labels_colors(dhc) <- colors_to_use
+# Now each level of complexity has a color
+#labels_colors(dend) #---> This will list the row numbers that appear on the dendrogram from left to right.  
+
+
+#now we need to change the labels to the level names of complexity
+dhc.list<-as.character(taxonnew$Group)
+
+#now we need to change the order of labels from the order in which they appear in the original data to match the order in which they appear on the dendrogram we just made.
+labels(dhc)<- dhc.list[order.dendrogram(dhc)]
+
+dhc <- set(dhc, "labels_cex", 4)
+
+#Here is the final plot!
+plot(dhc, main = "Taxon", cex=1.5)
+
+# Rectangular lines
+#ddata <- dendro_data(dhc, type = "rectangle")
+#p <- ggplot(segment(ddata)) + 
+#  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) +
+#  geom_text(data = label(ddata), 
+#            aes(x = x, y = y, label = label, hjust = 0), 
+#            size = 5) +
+#  coord_flip() + scale_y_reverse(expand = c(0.2, 0)) + theme_classic()
+#
+#p
+
+#dhc <- as.dendrogram(hc)
+#dhc <- ggdendrogram(hc, rotate = FALSE, size = 4) + theme(text = element_text(size = 20))   
+
+#plot(dhc, cex = 2)
 
 ```
 
 ### H. papilio LSG Heatmap
-```{r heatmap_pap}
+```{r heatmap_pap, fig.width = 10, fig.height = 10}
 newtable_heat <- newtable[,-1]
 rownames(newtable_heat) <- newtable[,1]
 
@@ -159,18 +325,46 @@ names(papilio_heat)[names(papilio_heat) == 'Row.names'] <- 'Orthogroup'
 papilio_heat_x <- papilio_heat[,-1]
 rownames(papilio_heat_x) <- papilio_heat[,1]
 
+papilio_heat_x <- papilio_heat_x %>%
+  select(contains("Am_tu_Hp"))
+
+
+papilio_heat_x <- papilio_heat_x %>%
+  subset(select = -c(1) )
+
 data <- as.matrix(papilio_heat_x)
-fig <- plot_ly(z = data, y=rownames(papilio_heat_x), x=colnames(papilio_heat_x), colors = colorRamp(c("white", "red")), type = "heatmap") %>%
-  layout( plot_bgcolor='#e5ecf6',
-          yaxis = list(
-            showticklabels = FALSE,
-            gridcolor = 'ffff'))#generate an interactive heat map
-fig #view
+
+papilio_taxon_filtered <- subset(taxonnew, grepl("Am_tu_Hp", rownames(taxonnew)))
+papilio_taxon_filtered <- subset(papilio_taxon_filtered, !(rownames(papilio_taxon_filtered) == "Am_tu_Hp.TIdeS_Pred.AA"))
+row_names <- rownames(papilio_taxon_filtered)
+df_ordered_papilio <- as.data.frame(papilio_taxon_filtered[order(papilio_taxon_filtered$Location), ])
+rownames(df_ordered_papilio) <- rownames(papilio_taxon_filtered)[order(papilio_taxon_filtered$Location)]
+colnames(df_ordered_papilio) <- c("Location")
+#colnames(data) <- str_trunc(colnames(data), 13, "right") 
+
+
+col_indices <- match(rownames(df_ordered_papilio), colnames(data))
+data_ordered <- data[, col_indices]
+data_ordered <- data_ordered[,-47]
+
+#colnames(data) <- str_trunc(colnames(data), 13, "right")
+clustered <- pheatmap(papilio_heat_x, color=colorRampPalette(c("white", "black"))(50), show_rownames = F)
+
+#fig <- plot_ly(z = data, y=rownames(papilio_heat_x), #x=colnames(papilio_heat_x), colors = colorRamp(c("white", "red")), type #= "heatmap") %>%
+#  layout( plot_bgcolor='#e5ecf6',
+#          yaxis = list(
+#            showticklabels = FALSE,
+#            gridcolor = 'ffff'),
+#          xaxis = list(
+#            showticklabels = FALSE,
+#            gridcolor = 'ffff'))#generate an interactive heat map
+#fig #view
 
 ```
 
 ### H. elegans LSG Heatmap
-```{r heatmap_elegans}
+```{r heatmap_elegans, fig.width = 10, fig.height = 10}
+library(reshape)
 newtable_heat <- newtable[,-1]
 rownames(newtable_heat) <- newtable[,1]
 
@@ -183,12 +377,34 @@ names(elegans_heat)[names(elegans_heat) == 'Row.names'] <- 'Orthogroup'
 elegans_heat_x <- elegans_heat[,-1]
 rownames(elegans_heat_x) <- elegans_heat[,1]
 
+elegans_heat_x <- elegans_heat_x %>%
+  select(contains("Am_tu_He"))
+  #select(-c(Am_tu_He43))
+
 data <- as.matrix(elegans_heat_x)
-fig <- plot_ly(z = data, y=rownames(elegans_heat_x), x=colnames(elegans_heat_x), colors = colorRamp(c("white", "red")), type = "heatmap") %>%
-  layout( plot_bgcolor='#e5ecf6',
-          yaxis = list(
-            showticklabels = FALSE,
-            gridcolor = 'ffff'))#generate an interactive heat map
-fig #view
+elegans_taxon_filtered <- subset(taxonnew, grepl("Am_tu_He", rownames(taxonnew)))
+elegans_taxon_filtered <- subset(elegans_taxon_filtered, !(rownames(elegans_taxon_filtered) == "Am_tu_He44"))
+row_names <- rownames(elegans_taxon_filtered)
+df_ordered <- as.data.frame(elegans_taxon_filtered[order(elegans_taxon_filtered$Location), ])
+rownames(df_ordered) <- rownames(elegans_taxon_filtered)[order(elegans_taxon_filtered$Location)]
+colnames(df_ordered) <- c("Location")
+#colnames(data) <- str_trunc(colnames(data), 13, "right") 
+
+
+col_indices <- match(rownames(df_ordered), colnames(data))
+data_ordered <- data[, col_indices]
+
+clustered <- pheatmap(elegans_heat_x, color=colorRampPalette(c("white", "black"))(50), show_rownames = F, cluster_cols = T)
+
+
+#fig <- plot_ly(z = data, y=rownames(elegans_heat_x), #x=colnames(elegans_heat_x), colors = colorRamp(c("white", "red")), type #= "heatmap") %>%
+#  layout( plot_bgcolor='#e5ecf6',
+#          yaxis = list(
+#            showticklabels = FALSE,
+#            gridcolor = 'ffff'),
+#          xaxis = list(
+#            showticklabels = FALSE,
+#            gridcolor = 'ffff'))#generate an interactive heat map
+#fig #view
 
 ```
